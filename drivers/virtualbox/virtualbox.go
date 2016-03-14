@@ -691,6 +691,7 @@ func (d *Driver) getHostOnlyMACAddress() (string, error) {
 	return strings.ToLower(groups[1]), nil
 }
 
+// copy
 func (d *Driver) parseIPForMACFromIPAddr(ipAddrOutput string, macAddress string) (string, error) {
 	// Given the output of "ip addr show" on the VM, return the IPv4 address
 	// of the interface with the given MAC address.

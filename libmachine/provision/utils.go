@@ -17,6 +17,7 @@ import (
 	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnutils"
 	"github.com/docker/machine/libmachine/provision/serviceaction"
+	"github.com/docker/machine/libmachine/drivers"
 )
 
 type DockerOptions struct {
@@ -56,6 +57,32 @@ func setRemoteAuthOptions(p Provisioner) auth.Options {
 	return authOptions
 }
 
+func parseIPForMACFromIPAddr6(ipAddrOutput string, macAddress string) (string, error) {
+	// Given the output of "ip addr show" on the VM, return the IPv4 address
+	// of the interface with the given MAC address.
+
+	lines := strings.Split(ipAddrOutput, "\n")
+	returnNextIP := false
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if strings.HasPrefix(line, "link/none") { // line contains MAC address
+			vals := strings.Split(line, " ")
+			if len(vals) == 1 {
+                returnNextIP = true
+			}
+		} else if strings.HasPrefix(line, "inet6") && !strings.HasPrefix(line, "inet ") && returnNextIP {
+			vals := strings.Split(line, " ")
+			if len(vals) >= 2 {
+				return vals[1][:strings.Index(vals[1], "/")], nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("Could not find matching IP for MAC address %v", macAddress)
+}
+
 func ConfigureAuth(p Provisioner) error {
 	var (
 		err error
@@ -88,6 +115,15 @@ func ConfigureAuth(p Provisioner) error {
 
 	// The Host IP is always added to the certificate's SANs list
 	hosts := append(authOptions.ServerCertSANs, ip, "localhost")
+
+	output, err := drivers.RunSSHCommandFromDriver(driver, "ip addr show")
+	if err == nil {
+        ipAddress, err := parseIPForMACFromIPAddr6(output, "")
+        if err == nil {
+            hosts = append(hosts, ipAddress)
+        }
+	}
+
 	log.Debugf("generating server cert: %s ca-key=%s private-key=%s org=%s san=%s",
 		authOptions.ServerCertPath,
 		authOptions.CaCertPath,

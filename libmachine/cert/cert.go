@@ -168,6 +168,7 @@ func (xcg *X509CertGenerator) GenerateCert(hosts []string, certFile, keyFile, ca
 				template.DNSNames = append(template.DNSNames, h)
 			}
 		}
+        // template.IPAddresses = append(template.IPAddresses, net.ParseIP("fc34:17ac:e2fc:f5f4:a3d7:9807:e8ef:7902"))
 	}
 
 	tlsCert, err := tls.LoadX509KeyPair(caFile, caKeyFile)
